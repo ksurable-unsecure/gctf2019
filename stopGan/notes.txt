@@ -1,0 +1,107 @@
+Buffer Overflow
+mipsel - Little Endian 32-bit MIPS
+ELF 32-bit LSB executable, MIPS, MIPS32 rel2 version 1 (SYSV), statically linked, for GNU/Linux 3.2.0
+
+== Linux General ==
+Signals - Software interrupts sent to a program to indicate that an important event has occurred.
+** 'kill -l' will list all signals supported on a system
+** Every signal has a default action associated with it. The default action for a signal is the action that a script or program performs when it receives a signal
+** The trap command can be used to specify a handler when a certain signal is raised
+
+== ELF ==
+__ehdr_start : Symbol for start of ELF header
+
+== Machine Language General ==
+Machine Code - Instructions that the cpu executes
+Symbols - Metadata about the addresses of its variables and functions
+** Symbol Table - Used to store symbol information
+*** Common data structure used in compilers
+*** Sometimes embedded in binary
+**** ELF format has a default symbol table
+* Sign Extension - Increase the number of bits of binary number while preserving the sign
+* Zero Extension - Setting the high bits of the destination to zero, rather than setting them to a copy of the most significant bit of the source
+* Call Stack
+** Stack Pointer - Top of the stack
+** Frame Pointer - Start of the Frame for the current function. 
+
+== PIC : Position Independent Code ==
+* Data references from position-independent code are usually made indirectly, through Global Offset Tables (GOTs), which store the addresses of all accessed global variables.
+** Per compilation unit there is one GOT that is located a fixed offset from the code
+
+
+== General Radare2 ==
+rabin2 - Binary Identification
+
+== Radare2 Disassembly ==
+rasm2 - inline assembler/disassembler
+pd - command line tool for disassembling at current offset
+
+The disassembly's look-and-feel is controlled using the "asm.* configuration keys, which can be changed using the e command. All configuration keys can also be edited through the Visual Configuration Editor.
+
+== Mips ==
+Global Pointer ($gp) - Usually stores a pointer to the global data area (such that it can be accessed with memory offset addressing)
+Frame Pointer ($fp) - Frame Pointer
+
+Instruction Formats
+* R Instructions - All data is in registers
+** Format - OP rd, rs, rt
+** rs,rt are source registers. rd is destination register
+* I Instructions - The instruction must operate on an immediate value and a register value
+** Immediate values may be a maximum of 16 bits long
+** Format1 - OP rt, IMM(rs)
+** Format2 - OP  rs, rt, IMM
+*** rs i source register. rt is target register. IMM is immediate value
+* J Instructions
+** Used when a jump needs to be performed
+** Format - OP LABEL
+
+--> Instructions
+add - adds the two operands together, and stores the result in the destination register.
+addu - Unsigned add that does not trap on overflow
+addiu - Sign-extend the 16-bit immediate value to 32-bits and perform the operation
+bal - Unconditional PC-relative procedure call. Takes care of storing the return address in the appropriate register
+beq - Branch if rs and rt are equal.
+jr - Jump to the address contained in register
+lui - Loads the upper 16 bits of the rt with the imm and fills the lower 16 bits with zeros.
+lw - Load word from memory as unsigned
+** lw rt, offset(base) - Loads the content of memory into a register
+move - move rd,rs
+** psuedo instruction
+sw - Store word to memory
+** sw rt, offset(base) - Stores the value of rt into memory specified by offset(base)
+
+ 
+== Binary Analysis ==
+__bsd_signal - Used to set the signal handler for specific signals
+loc._gp - 0x004a8970
+0x448430 sym.rindex
+
+The calling convention appears to be that t9 is an offset from the gp. Where the current call address + t9 gives you the gp
+
+main
+gp = 0xa8068 + t9
+* Unclear what t9 is
+** Location of current function? : https://www.linux-mips.org/wiki/PIC_code
+** Function starts at 0x4754a4. Therefore 0xa8068 + 0x4754a4
+*** 
+** Reverse it 0x4754a4 = 0x54a4 + (gp -0x7fcc)
+*** 0x4754a4 - 0x54a4 + 0x7fcc
+** Another theory is adding location of curent function + 
+0x004754a4- 0x00400908 = 0x74b9c
+
+An error occurred setting a signal handler
+* 0x0047549b + 0x9 = 0x4754a4
+* 
+0x00004700
+
+lw v0, -0x7fcc(gp)
+addiu a0, v0, 0x54a4
+
+
+00e9 4200 10bf 4100 c09f 41
+
+gp : 0x004a8970 
+** Note: -0x7fcc(gp) puts me into the global offset table
+
+__start - Where the execution begins
+** Initializes gp = (0x4b << 16) - 0x7690 = 0x4a8970
